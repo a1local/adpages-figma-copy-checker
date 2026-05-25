@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AdPages Copy Checker</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: var(--figma-color-bg, #ffffff);
+        --panel: var(--figma-color-bg-secondary, #f5f5f5);
+        --text: var(--figma-color-text, #1d1d1f);
+        --muted: var(--figma-color-text-secondary, #62666d);
+        --border: var(--figma-color-border, #d8dce3);
+        --brand: var(--figma-color-bg-brand, #0d99ff);
+        --brand-text: var(--figma-color-text-onbrand, #ffffff);
+        --ok: #15803d;
+        --warn: #b45309;
+        --bad: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 12px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .section {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      label {
+        display: grid;
+        gap: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.primary {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: var(--brand-text);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .result-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .result {
+        display: grid;
+        gap: 5px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px;
+        background: var(--panel);
+      }
+
+      .bad {
+        color: var(--bad);
+      }
+
+      .warn {
+        color: var(--warn);
+      }
+
+      .ok {
+        color: var(--ok);
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .copy {
+        word-break: break-word;
+      }
+
+      .output {
+        min-height: 38px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stack">
+      <header class="header">
+        <div class="stack" style="gap: 4px">
+          <h1>AdPages Copy Checker</h1>
+          <p class="meta">Local ad-copy checks and UTM generation.</p>
+        </div>
+        <p id="selectionStatus" class="status">No selection loaded</p>
+      </header>
+
+      <section class="section" aria-labelledby="copyHeading">
+        <h2 id="copyHeading">Copy</h2>
+        <textarea id="copyInput" placeholder="Paste copy here, or select text layers in Figma. Each non-empty line is checked separately."></textarea>
+        <div class="row">
+          <button id="useSelectionButton" type="button">Use selection</button>
+          <button id="refreshSelectionButton" type="button">Refresh</button>
+          <button id="checkButton" class="primary" type="button">Check copy</button>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="resultsHeading">
+        <h2 id="resultsHeading">Results</h2>
+        <div id="results" class="result-list">
+          <p class="meta">Run a check to see headline and description length status.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="utmHeading">
+        <h2 id="utmHeading">UTM Builder</h2>
+        <label>
+          Destination URL
+          <input id="destinationUrl" type="url" placeholder="https://example.com/landing-page" />
+        </label>
+        <div class="grid">
+          <label>
+            Source
+            <input id="utmSource" type="text" placeholder="google" />
+          </label>
+          <label>
+            Medium
+            <input id="utmMedium" type="text" placeholder="cpc" />
+          </label>
+          <label>
+            Campaign
+            <input id="utmCampaign" type="text" placeholder="local-service" />
+          </label>
+          <label>
+            Term
+            <input id="utmTerm" type="text" placeholder="emergency plumber" />
+          </label>
+        </div>
+        <label>
+          Content
+          <input id="utmContent" type="text" placeholder="headline-a" />
+        </label>
+        <div class="row">
+          <button id="generateUtmButton" class="primary" type="button">Generate URL</button>
+          <button id="copyUrlButton" type="button" disabled>Copy</button>
+        </div>
+        <output id="utmOutput" class="output" aria-live="polite"></output>
+      </section>
+    </main>
+
+    <script>
+      const HEADLINE_LIMIT = 30;
+      const DESCRIPTION_LIMIT = 90;
+
+      let selectedText = "";
+      let generatedUrl = "";
+
+      const copyInput = document.getElementById("copyInput");
+      const selectionStatus = document.getElementById("selectionStatus");
+      const results = document.getElementById("results");
+      const useSelectionButton = document.getElementById("useSelectionButton");
+      const refreshSelectionButton = document.getElementById("refreshSelectionButton");
+      const checkButton = document.getElementById("checkButton");
+      const destinationUrl = document.getElementById("destinationUrl");
+      const utmOutput = document.getElementById("utmOutput");
+      const generateUtmButton = document.getElementById("generateUtmButton");
+      const copyUrlButton = document.getElementById("copyUrlButton");
+
+      parent.postMessage({ pluginMessage: { type: "ready" } }, "*");
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message || message.type !== "selection") return;
+
+        selectedText = message.payload.text || "";
+        const count = message.payload.nodeCount;
+        const suffix = message.payload.truncated ? " truncated" : "";
+        selectionStatus.textContent = count ? `${count} text layer${count === 1 ? "" : "s"} loaded${suffix}` : "No text layers selected";
+        useSelectionButton.disabled = !selectedText;
+      };
+
+      useSelectionButton.addEventListener("click", () => {
+        copyInput.value = selectedText;
+        runCopyCheck();
+      });
+
+      refreshSelectionButton.addEventListener("click", () => {
+        parent.postMessage({ pluginMessage: { type: "refresh-selection" } }, "*");
+      });
+
+      checkButton.addEventListener("click", runCopyCheck);
+      generateUtmButton.addEventListener("click", generateUtmUrl);
+      copyUrlButton.addEventListener("click", copyGeneratedUrl);
+
+      function runCopyCheck() {
+        const lines = copyInput.value
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        results.innerHTML = "";
+
+        if (!lines.length) {
+          results.append(renderEmpty("Add copy or select text layers first."));
+          return;
+        }
+
+        for (const [index, line] of lines.entries()) {
+          results.append(renderCopyResult(index + 1, line));
+        }
+      }
+
+      function renderCopyResult(index, line) {
+        const length = countCharacters(line);
+        const headlineDelta = length - HEADLINE_LIMIT;
+        const descriptionDelta = length - DESCRIPTION_LIMIT;
+        const element = document.createElement("article");
+        element.className = "result";
+
+        const title = document.createElement("strong");
+        title.textContent = `Line ${index}: ${length} characters`;
+
+        const copy = document.createElement("div");
+        copy.className = "copy";
+        copy.textContent = line;
+
+        const headline = document.createElement("div");
+        headline.className = headlineDelta <= 0 ? "ok" : "bad";
+        headline.textContent = headlineDelta <= 0
+          ? `Headline OK (${HEADLINE_LIMIT - length} spare)`
+          : `Headline over by ${headlineDelta}`;
+
+        const description = document.createElement("div");
+        description.className = descriptionDelta <= 0 ? "ok" : "bad";
+        description.textContent = descriptionDelta <= 0
+          ? `Description OK (${DESCRIPTION_LIMIT - length} spare)`
+          : `Description over by ${descriptionDelta}`;
+
+        element.append(title, copy, headline, description);
+
+        if (headlineDelta > 0) {
+          const suggestion = document.createElement("div");
+          suggestion.className = "meta";
+          suggestion.textContent = `Headline trim: ${fitToLength(line, HEADLINE_LIMIT)}`;
+          element.append(suggestion);
+        }
+
+        if (descriptionDelta > 0) {
+          const suggestion = document.createElement("div");
+          suggestion.className = "meta";
+          suggestion.textContent = `Description trim: ${fitToLength(line, DESCRIPTION_LIMIT)}`;
+          element.append(suggestion);
+        }
+
+        return element;
+      }
+
+      function generateUtmUrl() {
+        const base = destinationUrl.value.trim();
+        if (!base) {
+          setUtmOutput("Add a destination URL first.", "bad");
+          return;
+        }
+
+        let url;
+        try {
+          url = new URL(base);
+        } catch {
+          setUtmOutput("Use a full URL, including https://", "bad");
+          return;
+        }
+
+        const params = {
+          utm_source: document.getElementById("utmSource").value.trim(),
+          utm_medium: document.getElementById("utmMedium").value.trim(),
+          utm_campaign: document.getElementById("utmCampaign").value.trim(),
+          utm_term: document.getElementById("utmTerm").value.trim(),
+          utm_content: document.getElementById("utmContent").value.trim()
+        };
+
+        for (const [key, value] of Object.entries(params)) {
+          if (value) url.searchParams.set(key, value);
+        }
+
+        generatedUrl = url.toString();
+        setUtmOutput(generatedUrl, "ok");
+        copyUrlButton.disabled = false;
+      }
+
+      async function copyGeneratedUrl() {
+        if (!generatedUrl) return;
+
+        try {
+          await navigator.clipboard.writeText(generatedUrl);
+          parent.postMessage({ pluginMessage: { type: "copy-generated-url", url: generatedUrl } }, "*");
+        } catch {
+          setUtmOutput(generatedUrl, "warn");
+          parent.postMessage({ pluginMessage: { type: "notify", message: "Copy failed. Select the generated URL manually." } }, "*");
+        }
+      }
+
+      function countCharacters(value) {
+        return Array.from(value).length;
+      }
+
+      function fitToLength(value, limit) {
+        const characters = Array.from(value);
+        if (characters.length <= limit) return value;
+
+        let fitted = characters.slice(0, limit).join("").trimEnd();
+        const lastSpace = fitted.lastIndexOf(" ");
+        if (lastSpace > 12) fitted = fitted.slice(0, lastSpace);
+        return fitted;
+      }
+
+      function setUtmOutput(message, className) {
+        utmOutput.textContent = message;
+        utmOutput.className = `output ${className}`;
+      }
+
+      function renderEmpty(message) {
+        const element = document.createElement("p");
+        element.className = "meta";
+        element.textContent = message;
+        return element;
+      }
+    </script>
+  </body>
+</html>
